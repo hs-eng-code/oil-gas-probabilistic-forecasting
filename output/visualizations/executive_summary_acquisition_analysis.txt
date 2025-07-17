@@ -1,0 +1,49 @@
+ASSET ACQUISITION ANALYSIS: EXECUTIVE SUMMARY
+======================================================================
+
+SCENARIO OVERVIEW:
+• Scenarios Analyzed: 3
+• Forecast Period: 30 years
+• Available Scenarios: conservative, standard, aggressive
+
+CONSERVATIVE SCENARIO RESULTS:
+  Revenue (30-year):
+    P10 (Optimistic): $4.9B
+    P50 (Expected):   $3.2B
+    P90 (Conservative): $2.1B
+    Range: $2.8B
+    P10/P90 Ratio: 2.36x
+  Production (30-year):
+    P50 EUR: 46.7 MMbbl
+
+STANDARD SCENARIO RESULTS:
+  Revenue (30-year):
+    P10 (Optimistic): $4.0B
+    P50 (Expected):   $3.0B
+    P90 (Conservative): $2.3B
+    Range: $1.7B
+    P10/P90 Ratio: 1.73x
+  Production (30-year):
+    P50 EUR: 44.0 MMbbl
+
+AGGRESSIVE SCENARIO RESULTS:
+  Revenue (30-year):
+    P10 (Optimistic): $3.8B
+    P50 (Expected):   $2.9B
+    P90 (Conservative): $2.2B
+    Range: $1.5B
+    P10/P90 Ratio: 1.69x
+  Production (30-year):
+    P50 EUR: 42.1 MMbbl
+
+INVESTMENT RECOMMENDATIONS:
+• Conservative scenario provides downside protection
+• Standard scenario represents most likely outcome
+• Aggressive scenario shows upside potential
+• Consider risk tolerance when evaluating scenarios
+
+RISK ASSESSMENT:
+• Review P10/P90 ratios for uncertainty levels
+• Monitor production decline rates
+• Consider price escalation assumptions
+• Evaluate financing requirements vs risk profile

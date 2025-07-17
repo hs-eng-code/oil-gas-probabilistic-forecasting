@@ -1,0 +1,386 @@
+{
+  "report_metadata": {
+    "generated_at": "2025-07-15T20:39:05.644956",
+    "pipeline_version": "Modernized Forecasting Pipeline v2.0",
+    "report_type": "Comprehensive Asset Analysis"
+  },
+  "executive_summary": {
+    "asset_overview": {
+      "total_wells": 374,
+      "successful_wells": 374,
+      "success_rate_percent": 100.0,
+      "processing_time_seconds": 0,
+      "peak_memory_mb": 0
+    },
+    "production_forecast": {
+      "forecast_period_years": 30,
+      "p10_total_production_bbl": 55593524.7207551,
+      "p50_total_production_bbl": 42121791.0218995,
+      "p90_total_production_bbl": 32232457.02753475
+    },
+    "revenue_forecast": {
+      "p10_total_revenue_usd": 3768662560.8337946,
+      "p50_total_revenue_usd": 2880689261.393099,
+      "p90_total_revenue_usd": 2226125751.541277,
+      "average_oil_price_per_bbl": 62.8081388888889,
+      "revenue_uncertainty_percent": 53.547490524769344
+    },
+    "quality_summary": {
+      "high_quality_wells": 256,
+      "medium_quality_wells": 29,
+      "low_quality_wells": 53,
+      "very_low_quality_wells": 26,
+      "failed_wells": 0,
+      "high_quality_percentage": 68.44919786096256,
+      "overall_quality_score": 83.08823529411765
+    },
+    "method_performance": {
+      "differential_evolution": {
+        "wells_processed": 281,
+        "avg_r_squared": 0.593289156195052,
+        "avg_pearson_r": 0.647067200896476,
+        "success_rate": 80.0711743772242
+      },
+      "multi_start_lbfgs": {
+        "wells_processed": 30,
+        "avg_r_squared": 0.642177025102558,
+        "avg_pearson_r": 0.7301675403453518,
+        "success_rate": 76.66666666666667
+      },
+      "segmented_regression": {
+        "wells_processed": 51,
+        "avg_r_squared": 0.7484397889302606,
+        "avg_pearson_r": 0.8999259211285845,
+        "success_rate": 98.0392156862745
+      },
+      "rate_cumulative_transform": {
+        "wells_processed": 9,
+        "avg_r_squared": 0.37141272252143986,
+        "avg_pearson_r": 0.7304962504833168,
+        "success_rate": 77.77777777777779
+      },
+      "robust_regression": {
+        "wells_processed": 3,
+        "avg_r_squared": 0.43728764660827935,
+        "avg_pearson_r": 0.3766331215581577,
+        "success_rate": 66.66666666666666
+      }
+    }
+  },
+  "pipeline_performance": {
+    "processing_times": {
+      "data_validation": 0.5695586204528809,
+      "arps_dca": 197.31839895248413,
+      "probabilistic_forecasting": 17.256890773773193,
+      "asset_aggregation": 17.156189680099487,
+      "revenue_calculation": 0.3933074474334717,
+      "comprehensive_validation": 0.015125274658203125,
+      "advanced_analytics": 6.262938499450684
+    },
+    "memory_usage": {
+      "data_loading": 313.4765625,
+      "arps_dca": 309.40234375,
+      "probabilistic_forecasting": 309.09375,
+      "asset_aggregation": 316.1484375,
+      "revenue_calculation": 316.5625
+    },
+    "system_performance": {
+      "total_processing_time": 0,
+      "arps_dca_time": 197.31839895248413,
+      "bayesian_forecasting_time": 0,
+      "revenue_calculation_time": 0.3933074474334717,
+      "peak_memory_usage": 0
+    }
+  },
+  "arps_dca_analysis": {
+    "processing_summary": {
+      "total_wells": 374,
+      "successful_wells": 374,
+      "failed_wells": 0,
+      "success_rate": 100.0
+    },
+    "method_performance": {
+      "differential_evolution": {
+        "count": 281,
+        "avg_r_squared": 0.593289156195052,
+        "avg_pearson_r": 0.647067200896476,
+        "warning_count": 56
+      },
+      "multi_start_lbfgs": {
+        "count": 30,
+        "avg_r_squared": 0.642177025102558,
+        "avg_pearson_r": 0.7301675403453518,
+        "warning_count": 7
+      },
+      "segmented_regression": {
+        "count": 51,
+        "avg_r_squared": 0.7484397889302606,
+        "avg_pearson_r": 0.8999259211285845,
+        "warning_count": 1
+      },
+      "rate_cumulative_transform": {
+        "count": 9,
+        "avg_r_squared": 0.37141272252143986,
+        "avg_pearson_r": 0.7304962504833168,
+        "warning_count": 2
+      },
+      "robust_regression": {
+        "count": 3,
+        "avg_r_squared": 0.43728764660827935,
+        "avg_pearson_r": 0.3766331215581577,
+        "warning_count": 1
+      }
+    },
+    "quality_tier_distribution": {
+      "high": 256,
+      "medium": 29,
+      "low": 53,
+      "very_low": 26,
+      "unreliable": 10,
+      "failed": 0,
+      "unknown": 0
+    },
+    "parameter_statistics": {
+      "initial_production_qi": {
+        "mean": 25545.47844471958,
+        "median": 25840.623296161524,
+        "std": 9400.755942356884,
+        "min": 150.0,
+        "max": 48896.73435208807
+      },
+      "decline_rate_di": {
+        "mean": 0.23564021456376658,
+        "median": 0.19294285886497278,
+        "std": 0.19337993550778418,
+        "min": 0.001,
+        "max": 0.9677366166918143
+      },
+      "b_factor": {
+        "mean": 0.8140504528155135,
+        "median": 0.758834118850786,
+        "std": 0.559787844628824,
+        "min": 0.001,
+        "max": 1.99
+      }
+    },
+    "failure_analysis": {}
+  },
+  "forecasting_results": {
+    "forecasting_method": "Traditional Bayesian",
+    "forecast_period_months": 360,
+    "production_forecast_summary": {
+      "p10_total_production_bbl": 55593524.7207551,
+      "p50_total_production_bbl": 42121791.0218995,
+      "p90_total_production_bbl": 32232457.02753475,
+      "peak_monthly_production_bbl": 10095829.831245968
+    },
+    "uncertainty_analysis": {
+      "production_uncertainty_percent": 55.4607653816874,
+      "p10_p90_production_ratio": 1.7247684429785801,
+      "uncertainty_level": "Very High"
+    }
+  },
+  "revenue_analysis": {
+    "revenue_forecast_summary": {
+      "p10_total_revenue_usd": 3768662560.8337946,
+      "p50_total_revenue_usd": 2880689261.393099,
+      "p90_total_revenue_usd": 2226125751.541277,
+      "revenue_per_barrel": {
+        "p10": 67.78959563660864,
+        "p50": 68.38952455500771,
+        "p90": 69.06472409595077
+      }
+    },
+    "price_analysis": {
+      "average_price_per_bbl": 62.8081388888889,
+      "min_price_per_bbl": 61.4,
+      "max_price_per_bbl": 75.1
+    },
+    "revenue_uncertainty": {
+      "uncertainty_percent": 53.547490524769344,
+      "p10_p90_ratio": 1.6929243813942358
+    }
+  },
+  "quality_assessment": {
+    "quality_tier_distribution": {
+      "high": 256,
+      "medium": 29,
+      "low": 53,
+      "very_low": 26,
+      "unreliable": 10,
+      "failed": 0,
+      "unknown": 0
+    },
+    "r_squared_statistics": {
+      "mean": 0.6117769259942447,
+      "median": 0.8591392726328142,
+      "std": 0.6092995822471065,
+      "min": -3.4408196843085683,
+      "max": 0.9977728622942852,
+      "wells_above_08": 234,
+      "wells_above_06": 277,
+      "wells_negative": 56
+    },
+    "method_success_rates": {
+      "differential_evolution": 80.0711743772242,
+      "multi_start_lbfgs": 76.66666666666667,
+      "segmented_regression": 98.0392156862745,
+      "rate_cumulative_transform": 77.77777777777779,
+      "robust_regression": 66.66666666666666
+    },
+    "parameter_validation": {
+      "total_wells": 374,
+      "wells_with_issues": 0,
+      "wells_with_warnings": 67,
+      "validation_pass_rate": 100.0
+    }
+  },
+  "validation_summary": {
+    "validation_results": {
+      "physical_constraints": {
+        "valid": true,
+        "issues": [],
+        "warnings": [
+          "Well 0ACLQ4CKB3: Very low R\u00b2: -0.622",
+          "Well 22G5W1BQUY: Very low R\u00b2: -0.075",
+          "Well 26R8DRQL8I: Very low R\u00b2: -0.055",
+          "Well 2Q5Q6CN62O: Very low R\u00b2: -0.027",
+          "Well 32PQL735KT: Very low R\u00b2: -0.014",
+          "Well 3MTE74ASNX: Very low R\u00b2: -0.090",
+          "Well 3NUFRNG2GZ: Very low R\u00b2: -0.154",
+          "Well 431QPFF668: Very low R\u00b2: -0.035",
+          "Well 48X3WKNSRM: Very low R\u00b2: -0.209",
+          "Well 5OLQ5GIOVO: Very low R\u00b2: -0.072",
+          "Well 5Z2BFO6NW3: Very low R\u00b2: -0.022",
+          "Well 66H1JU6M4J: Very low R\u00b2: 0.000",
+          "Well 6MX7RTK9QT: Very low R\u00b2: -0.428",
+          "Well 70MLOWSKQR: Very low R\u00b2: -0.061",
+          "Well 8NSZOC4USM: Very low R\u00b2: -0.021",
+          "Well 9X2MTE3FT3: Very low R\u00b2: -0.161",
+          "Well 9YWFTZ0LSE: Very low R\u00b2: -0.096",
+          "Well AE2CNC5TR8: Very low R\u00b2: 0.061",
+          "Well ASQRL0X85B: Very low R\u00b2: 0.000",
+          "Well BCLH72IAK9: Very low R\u00b2: -0.080",
+          "Well BDV45IKGL4: Very low R\u00b2: -0.342",
+          "Well BJPUT9X0UA: Very low R\u00b2: -0.019",
+          "Well BXBHAPAEPK: Very low R\u00b2: -0.023",
+          "Well CBSFB5WDSK: Very low R\u00b2: -0.031",
+          "Well CLTCBXJL9G: Very low R\u00b2: 0.024",
+          "Well CR76OV9YSM: Very low R\u00b2: -3.441",
+          "Well CUGIJTF3E6: Very low R\u00b2: -0.024",
+          "Well CZH3RBX46B: Very low R\u00b2: -0.128",
+          "Well D58M6FP0M5: Very low R\u00b2: -0.135",
+          "Well DQYUNGUS3P: Very low R\u00b2: -0.120",
+          "Well E486TFW4NB: Very low R\u00b2: -0.131",
+          "Well EBJBNFG0CK: Very low R\u00b2: -0.039",
+          "Well EFDGPZ5NXF: Very low R\u00b2: -0.015",
+          "Well ERFUQ2Z6N9: Very low R\u00b2: 0.018",
+          "Well F7OQQKYDH4: Very low R\u00b2: -2.819",
+          "Well F9L2S2V06H: Very low R\u00b2: -0.018",
+          "Well H82GXCM6GR: Very low R\u00b2: -1.641",
+          "Well HN6T3ZCG49: Very low R\u00b2: -3.221",
+          "Well IG7AY1PQ48: Very low R\u00b2: -1.114",
+          "Well IMH2SV661G: Very low R\u00b2: -0.120",
+          "Well IVTB8KH73D: Very low R\u00b2: -0.201",
+          "Well KIASRE535J: Very low R\u00b2: -0.021",
+          "Well KPIJG7FLZY: Very low R\u00b2: -0.197",
+          "Well KZ5VEEE91A: Very low R\u00b2: -0.208",
+          "Well M7YGGYLZH5: Very low R\u00b2: -1.597",
+          "Well MNMV628FM5: Very low R\u00b2: 0.021",
+          "Well N607FBX26D: Very low R\u00b2: -0.002",
+          "Well NVYUWVIHKD: Very low R\u00b2: -0.031",
+          "Well PL10I34P0E: Very low R\u00b2: 0.000",
+          "Well Q1N6IIVSTT: Very low R\u00b2: 0.000",
+          "Well QK775Q3DHR: Very low R\u00b2: -0.043",
+          "Well RAJC50QG53: Very low R\u00b2: -2.556",
+          "Well RPTOZ6B415: Very low R\u00b2: -0.005",
+          "Well RXKSKXIICS: Very low R\u00b2: -0.122",
+          "Well S8G347GDTW: Very low R\u00b2: -0.266",
+          "Well SJZFV4VPT3: Very low R\u00b2: 0.000",
+          "Well SKZ2L5F21X: Very low R\u00b2: -0.083",
+          "Well SY3UQ7YJ89: Very low R\u00b2: 0.000",
+          "Well TCOTFIXQ9C: Very low R\u00b2: -2.246",
+          "Well UK29BF5X6Q: Very low R\u00b2: -1.988",
+          "Well V0TBTCYG0Z: Very low R\u00b2: -0.051",
+          "Well VL3A9GUKVJ: Very low R\u00b2: -0.014",
+          "Well W0BR0TO8WY: Very low R\u00b2: -0.021",
+          "Well X14P6009QF: Very low R\u00b2: -0.045",
+          "Well XR1D6GE4WN: Very low R\u00b2: -0.100",
+          "Well Y8176510EI: Very low R\u00b2: 0.087",
+          "Well YS0MWBFZGK: Very low R\u00b2: -2.095"
+        ],
+        "total_wells_validated": 374
+      },
+      "statistical_properties": {
+        "valid": true,
+        "issues": [],
+        "warnings": [
+          "Moderate average R-squared: 0.612"
+        ],
+        "avg_r_squared": 0.6117769259942447,
+        "wells_evaluated": 374
+      },
+      "business_logic": {
+        "revenue_positive": true,
+        "issues": [],
+        "warnings": []
+      },
+      "data_quality": {
+        "valid": true,
+        "issues": [],
+        "warnings": []
+      },
+      "overall_valid": true
+    },
+    "data_quality_checks": {
+      "data_validation_passed": true,
+      "data_quality_issues": 0,
+      "data_quality_warnings": 0
+    },
+    "business_logic_validation": {
+      "business_logic_passed": false,
+      "business_logic_issues": 0,
+      "business_logic_warnings": 0
+    }
+  },
+  "business_metrics": {
+    "key_performance_indicators": {
+      "total_estimated_reserves_bbl": {
+        "p10": 55593524.7207551,
+        "p50": 42121791.0218995,
+        "p90": 32232457.02753475
+      },
+      "total_revenue_potential_usd": {
+        "p10": 3768662560.8337946,
+        "p50": 2880689261.393099,
+        "p90": 2226125751.541277
+      },
+      "average_revenue_per_barrel": 62.8081388888889
+    },
+    "investment_metrics": {
+      "asset_value_range_usd": {
+        "low": 2226125751.541277,
+        "base": 2880689261.393099,
+        "high": 3768662560.8337946
+      },
+      "uncertainty_level": "Very High"
+    }
+  },
+  "technical_details": {
+    "methodology": {
+      "decline_curve_analysis": "Advanced ArpsDCA with multiple fitting methods",
+      "probabilistic_forecasting": "Bayesian uncertainty quantification",
+      "revenue_calculation": "Strip price integration with escalation"
+    },
+    "quality_control": {
+      "parameter_validation": "Physical constraint validation",
+      "uncertainty_quantification": "Quality-tier based uncertainty multipliers",
+      "fallback_methods": "Industry analog parameters for challenging wells"
+    },
+    "performance_optimization": {
+      "parallel_processing": "Multi-threaded well processing",
+      "memory_optimization": "Efficient data structures",
+      "computation_time": "0.00 seconds"
+    }
+  }
+}

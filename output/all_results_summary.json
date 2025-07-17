@@ -1,0 +1,29 @@
+{
+  "conservative": {
+    "success": false,
+    "total_wells": 0,
+    "successful_wells": 0,
+    "processing_time": 0,
+    "output_dir": "output\\output_individualBayesian_conservativeUncertainty",
+    "timestamp": "",
+    "validation_status": {}
+  },
+  "standard": {
+    "success": false,
+    "total_wells": 0,
+    "successful_wells": 0,
+    "processing_time": 0,
+    "output_dir": "output\\output_individualBayesian_standardUncertainty",
+    "timestamp": "",
+    "validation_status": {}
+  },
+  "aggressive": {
+    "success": false,
+    "total_wells": 0,
+    "successful_wells": 0,
+    "processing_time": 0,
+    "output_dir": "output\\output_individualBayesian_aggressiveUncertainty",
+    "timestamp": "",
+    "validation_status": {}
+  }
+}
