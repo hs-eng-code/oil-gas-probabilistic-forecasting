@@ -2,9 +2,9 @@ ASSET ACQUISITION ANALYSIS: EXECUTIVE SUMMARY
 ======================================================================
 
 SCENARIO OVERVIEW:
-• Scenarios Analyzed: 3
-• Forecast Period: 30 years
-• Available Scenarios: conservative, standard, aggressive
+â€¢ Scenarios Analyzed: 3
+â€¢ Forecast Period: 30 years
+â€¢ Available Scenarios: conservative, standard, aggressive
 
 CONSERVATIVE SCENARIO RESULTS:
   Revenue (30-year):
@@ -37,13 +37,13 @@ AGGRESSIVE SCENARIO RESULTS:
     P50 EUR: 42.1 MMbbl
 
 INVESTMENT RECOMMENDATIONS:
-• Conservative scenario provides downside protection
-• Standard scenario represents most likely outcome
-• Aggressive scenario shows upside potential
-• Consider risk tolerance when evaluating scenarios
+â€¢ Conservative scenario provides downside protection
+â€¢ Standard scenario represents most likely outcome
+â€¢ Aggressive scenario shows upside potential
+â€¢ Consider risk tolerance when evaluating scenarios
 
 RISK ASSESSMENT:
-• Review P10/P90 ratios for uncertainty levels
-• Monitor production decline rates
-• Consider price escalation assumptions
-• Evaluate financing requirements vs risk profile
+â€¢ Review P10/P90 ratios for uncertainty levels
+â€¢ Monitor production decline rates
+â€¢ Consider price escalation assumptions
+â€¢ Evaluate financing requirements vs risk profile

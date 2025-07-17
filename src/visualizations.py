@@ -232,17 +232,21 @@ class SingleScenarioResultsVisualizer:
                 r_squared = fit_result.quality_metrics.get('r_squared', 0)
                 quality_scores.append(r_squared)
                 
-                # Assign confidence level based on R-squared
-                if r_squared >= 0.8:
-                    confidence_levels.append('High')
-                elif r_squared >= 0.6:
-                    confidence_levels.append('Medium')
-                elif r_squared >= 0.3:
-                    confidence_levels.append('Low')
-                elif r_squared >= 0:
-                    confidence_levels.append('Very Low')
-                else:
-                    confidence_levels.append('Unreliable')
+                # Use unified quality tier classification from ArpsDCA
+                validation_result = arps_dca.validation_results.get(well_name)
+                quality_tier = arps_dca._determine_quality_tier(fit_result, validation_result)
+                
+                # Map quality tier to display format
+                tier_display_mapping = {
+                    'high': 'High',
+                    'medium': 'Medium', 
+                    'low': 'Low',
+                    'very_low': 'Very Low',
+                    'unreliable': 'Unreliable',
+                    'failed': 'Failed'
+                }
+                
+                confidence_levels.append(tier_display_mapping.get(quality_tier, 'Unknown'))
         
         # Create enhanced parameter distribution plots
         fig, axes = plt.subplots(2, 3, figsize=(18, 14))
@@ -328,10 +332,12 @@ class SingleScenarioResultsVisualizer:
         method_names = list(method_quality.keys())
         method_means = [np.mean(method_quality[method]) for method in method_names]
         method_stds = [np.std(method_quality[method]) for method in method_names]
+        method_counts = [len(method_quality[method]) for method in method_names]
         
-        bars = ax5.bar(method_names, method_means, yerr=method_stds, 
-                      color=[self.method_colors.get(method, '#7f7f7f') for method in method_names],
-                      alpha=0.7, capsize=5)
+        # Use standard error for uncertainty in mean estimate (consistent with statistical approach)
+        method_standard_errors = [std / np.sqrt(n) for std, n in zip(method_stds, method_counts)]
+        
+        bars = ax5.bar(method_names, method_means, color=[self.method_colors.get(method, '#7f7f7f') for method in method_names], alpha=0.7, capsize=5) # yerr=method_stds, 
         
         ax5.set_xlabel('Fitting Method', fontsize=12)
         ax5.set_ylabel('Average R² Score', fontsize=12)
@@ -340,7 +346,7 @@ class SingleScenarioResultsVisualizer:
         ax5.grid(True, alpha=0.3)
         ax5.tick_params(axis='both', which='major', labelsize=12)
         
-        # Plot 6: Confidence level distribution
+        # Plot 6: Confidence level distribution: Pie chart
         ax6 = axes[1, 2]
         confidence_counts = {}
         for conf in confidence_levels:
@@ -349,13 +355,14 @@ class SingleScenarioResultsVisualizer:
         conf_names = list(confidence_counts.keys())
         conf_values = list(confidence_counts.values())
 
-        # Define the color mapping (adding 'Unreliable' with its color)
+        # Define the consistent color mapping for all quality tiers
         quality_colors = {
-            'High': '#66ff66',    # Green for High confidence
-            'Medium': '#ffcc00',  # Yellow for Medium confidence
-            'Low': '#ff3333',     # Red for Low confidence
-            'Very Low': '#999999',# Grey for Very Low confidence
-            'Unreliable': '#ff6666' # Light Red for Unreliable
+            'High': '#2ca02c',          # Green
+            'Medium': '#90EE90',        # Light green
+            'Low': '#ff7f0e',           # Orange
+            'Very Low': '#FFC0CB',      # Pink
+            'Unreliable': '#d62728',    # Red
+            'Failed': '#000000'         # Black
         }
 
         # Map each confidence level to its corresponding color
@@ -556,17 +563,36 @@ class SingleScenarioResultsVisualizer:
             method_r2_data = []
             method_labels = []
             
+            # Calculate ACTUAL unreliable wells per method using ArpsDCA quality tier system (consistent with ax5)
+            method_unreliable_counts = {}
+            for method in method_performance.keys():
+                method_unreliable_counts[method] = 0
+                
+            for well_name, fit_result in arps_dca.fit_results.items():
+                if fit_result.success and fit_result.method:
+                    validation_result = arps_dca.validation_results.get(well_name)
+                    quality_tier = arps_dca._determine_quality_tier(fit_result, validation_result)
+                    
+                    if quality_tier == 'unreliable':
+                        method = fit_result.method
+                        if method in method_unreliable_counts:
+                            method_unreliable_counts[method] += 1
+            
             for method, data in method_performance.items():
                 if data['r_squared_values']:
+                    # Include ALL qualified wells (all quality tiers: high, medium, low, very_low, unreliable)
+                    # method_performance already contains only successful fits with quality tiers
                     method_r2_data.append(data['r_squared_values'])
-                    # Add negative R² count to label
-                    neg_count = data['negative_r2_count']
+                    
+                    # Count unreliable wells for labeling (but include all wells in plot)
+                    unreliable_count = method_unreliable_counts.get(method, 0)
                     total_count = data['count']
-                    label = f"{method.replace('_', ' ').title()}\n({neg_count}/{total_count} neg)"
+                    label = f"{method.replace('_', ' ').title()}\n({total_count} wells, {unreliable_count} unreliable)"
                     method_labels.append(label)
             
             if method_r2_data:
-                box_plot = ax4.boxplot(method_r2_data, labels=method_labels, patch_artist=True)
+                # Use showfliers=True to display negative R² outliers, and extend whiskers to show full data range
+                box_plot = ax4.boxplot(method_r2_data, labels=method_labels, patch_artist=True, showfliers=True) # whis=[0,100] extends whiskers to min/max # Box: [Q1, Q3], with median (Q2) as a line inside # Whiskers: extend to data within [Q1 − 1.5×IQR, Q3 + 1.5×IQR] # Outliers: data outside whisker range (shown as circles if showfliers=True) # patch_artist=True fills the boxes with color
                 
                 # Color boxes based on median R²
                 for patch, r2_data in zip(box_plot['boxes'], method_r2_data):
@@ -604,54 +630,93 @@ class SingleScenarioResultsVisualizer:
             ax4.text(0.5, 0.5, 'No method data available', 
                     ha='center', va='center', transform=ax4.transAxes)
         
-        # Plot 5: Negative R² analysis
+        # Plot 5: Unreliable wells analysis (FIXED)
         ax5 = axes[1, 2]
         if method_performance:
-            methods = list(method_performance.keys())
-            negative_percentages = [method_performance[m]['negative_r2_percentage'] for m in methods]
+            # Calculate ACTUAL unreliable wells based on ArpsDCA quality tier classification
+            method_unreliable_counts = {}
+            method_unreliable_percentages = {}
             
-            bars = ax5.bar(methods, negative_percentages, color='#8B0000', alpha=0.7, edgecolor='black')
-            ax5.set_title('Negative R² Wells by Method', fontsize=14, fontweight='bold')
+            for method in method_performance.keys():
+                method_unreliable_counts[method] = 0
+                
+            # Count unreliable wells per method using ArpsDCA quality tier system
+            for well_name, fit_result in arps_dca.fit_results.items():
+                if fit_result.success and fit_result.method:
+                    validation_result = arps_dca.validation_results.get(well_name)
+                    quality_tier = arps_dca._determine_quality_tier(fit_result, validation_result)
+                    
+                    if quality_tier == 'unreliable':
+                        method = fit_result.method
+                        if method in method_unreliable_counts:
+                            method_unreliable_counts[method] += 1
+            
+            # Calculate percentages
+            for method in method_performance.keys():
+                total_wells = method_performance[method]['count']
+                unreliable_count = method_unreliable_counts.get(method, 0)
+                method_unreliable_percentages[method] = (unreliable_count / total_wells * 100) if total_wells > 0 else 0
+            
+            methods = list(method_performance.keys())
+            unreliable_percentages = [method_unreliable_percentages.get(m, 0) for m in methods]
+            
+            bars = ax5.bar(methods, unreliable_percentages, color='#d62728', alpha=0.7, edgecolor='black')
+            ax5.set_title('Unreliable Wells by Method', fontsize=14, fontweight='bold')
             ax5.set_xlabel('Fitting Method')
-            ax5.set_ylabel('Percentage of Wells with Negative R²')
+            ax5.set_ylabel('Percentage of Wells Classified as Unreliable')
             ax5.tick_params(axis='x', rotation=45)
             ax5.grid(True, alpha=0.3)
             ax5.tick_params(axis='both', which='major', labelsize=12)
             
             # Add percentage labels on bars
-            for bar, percentage in zip(bars, negative_percentages):
+            for bar, percentage in zip(bars, unreliable_percentages):
                 height = bar.get_height()
                 if height > 0:
                     ax5.text(bar.get_x() + bar.get_width()/2., height + 0.5,
                             f'{percentage:.1f}%', ha='center', va='bottom', fontweight='bold', fontsize=12)
             
-            # Add insight text
-            total_negative = sum(method_performance[m]['negative_r2_count'] for m in methods)
+            # Add insight text with CORRECT unreliable wells count
+            total_unreliable = sum(method_unreliable_counts.values())
             total_wells = sum(method_performance[m]['count'] for m in methods)
-            overall_negative_pct = (total_negative / total_wells) * 100 if total_wells > 0 else 0
+            overall_unreliable_pct = (total_unreliable / total_wells) * 100 if total_wells > 0 else 0
             
-            ax5.text(0.02, 0.98, f'Overall: {total_negative}/{total_wells} wells ({overall_negative_pct:.1f}%)\nBusiness Impact: High uncertainty wells', 
+            ax5.text(0.02, 0.98, f'Overall: {total_unreliable}/{total_wells} wells ({overall_unreliable_pct:.1f}%)\nBusiness Impact: Unreliable quality wells', 
                     transform=ax5.transAxes, va='top', ha='left', 
                     bbox=dict(boxstyle="round,pad=0.3", facecolor='yellow', alpha=0.7), fontsize=12)
         else:
-            ax5.text(0.5, 0.5, 'No negative R² data available', 
+            ax5.text(0.5, 0.5, 'No unreliable well data available', 
                     ha='center', va='center', transform=ax5.transAxes)
         
         # Plot 6: Text summary
         ax6 = axes[0, 2]
         if method_performance:
-            # Business summary text
+            # Business summary text (FIXED to be consistent with corrected Plot 5)
             summary_text = "METHOD PERFORMANCE SUMMARY\n" + "="*30 + "\n\n"
+            
+            # Calculate ACTUAL unreliable wells per method using ArpsDCA system (consistent with Plot 5)
+            method_unreliable_counts_summary = {}
+            for method in method_performance.keys():
+                method_unreliable_counts_summary[method] = 0
+                
+            for well_name, fit_result in arps_dca.fit_results.items():
+                if fit_result.success and fit_result.method:
+                    validation_result = arps_dca.validation_results.get(well_name)
+                    quality_tier = arps_dca._determine_quality_tier(fit_result, validation_result)
+                    
+                    if quality_tier == 'unreliable':
+                        method = fit_result.method
+                        if method in method_unreliable_counts_summary:
+                            method_unreliable_counts_summary[method] += 1
             
             for method, data in method_performance.items():
                 avg_r2 = data['avg_r_squared']
-                neg_count = data['negative_r2_count']
+                unreliable_count = method_unreliable_counts_summary.get(method, 0)  # FIXED: Use unreliable count
                 total_count = data['count']
                 
                 summary_text += f"{method.replace('_', ' ').title()}:\n"
                 summary_text += f"  • Wells: {total_count}\n"
                 summary_text += f"  • Avg R²: {avg_r2:.3f}\n"
-                summary_text += f"  • Negative R²: {neg_count} ({(neg_count/total_count)*100:.1f}%)\n"
+                summary_text += f"  • Unreliable Quality: {unreliable_count} ({(unreliable_count/total_count)*100:.1f}%)\n"
                 
                 if avg_r2 < 0:
                     summary_text += f"  • Status: REQUIRES HIGH UNCERTAINTY\n"
@@ -663,9 +728,9 @@ class SingleScenarioResultsVisualizer:
                     summary_text += f"  • Status: Good performance\n"
                 summary_text += "\n"
             
-            # Business insight
+            # Business insight (FIXED: Updated terminology)
             summary_text += "BUSINESS INSIGHTS:\n"
-            summary_text += "• Negative R² wells are retained with high uncertainty\n"
+            summary_text += "• Unreliable quality wells are retained with high uncertainty\n"
             summary_text += "• Portfolio value maintained through uncertainty modeling\n"
             summary_text += "• Conservative forecasting for challenging reservoirs"
             
@@ -750,7 +815,7 @@ class SingleScenarioResultsVisualizer:
             ax.set_xlim(0, 1)
             ax.set_ylim(0, 1)
             ax.axis('off')
-            plt.savefig(self.analysis_dir / 'bayesian_analysis.png', dpi=300, bbox_inches='tight', facecolor='white')
+            plt.savefig(self.analysis_dir / 'bayesian_parameters_uncertainty_analysis.png', dpi=300, bbox_inches='tight', facecolor='white')
             plt.close()
             
     def _plot_bayesian_posterior_distributions(self, ax, bayesian_forecaster, bayesian_wells):
@@ -851,24 +916,28 @@ class SingleScenarioResultsVisualizer:
     def _plot_bayesian_uncertainty_by_quality(self, ax, bayesian_forecaster, arps_dca, bayesian_wells):
         """Plot uncertainty quantification by well quality."""
         try:
-            quality_uncertainties = {'High': [], 'Medium': [], 'Low': [], 'Very Low': []}
+            quality_uncertainties = {'High': [], 'Medium': [], 'Low': [], 'Very Low': [], 'Unreliable': [], 'Failed': []}
             
             for well_name in bayesian_wells:
-                # Get quality from ArpsDCA
+                # Get quality from ArpsDCA using unified classification
                 if well_name in arps_dca.fit_results:
                     fit_result = arps_dca.fit_results[well_name]
                     if fit_result.quality_metrics:
-                        r_squared = fit_result.quality_metrics.get('r_squared', 0)
+                        # Use unified quality tier classification from ArpsDCA
+                        validation_result = arps_dca.validation_results.get(well_name)
+                        quality_tier_raw = arps_dca._determine_quality_tier(fit_result, validation_result)
                         
-                        # Classify quality
-                        if r_squared >= 0.8:
-                            quality_tier = 'High'
-                        elif r_squared >= 0.6:
-                            quality_tier = 'Medium'
-                        elif r_squared >= 0.3:
-                            quality_tier = 'Low'
-                        else:
-                            quality_tier = 'Very Low'
+                        # Map to display format
+                        tier_display_mapping = {
+                            'high': 'High',
+                            'medium': 'Medium',
+                            'low': 'Low',
+                            'very_low': 'Very Low',
+                            'unreliable': 'Unreliable',
+                            'failed': 'Failed'
+                        }
+                        
+                        quality_tier = tier_display_mapping.get(quality_tier_raw, 'Very Low')
                         
                         # Calculate uncertainty from Bayesian samples
                         result = bayesian_forecaster.fit_results[well_name]
@@ -891,11 +960,18 @@ class SingleScenarioResultsVisualizer:
                 box_data = [quality_uncertainties[q] for q in unique_qualities if quality_uncertainties[q]]
                 
                 if box_data:
-                    bp = ax.boxplot(box_data, labels=[q for q in unique_qualities if quality_uncertainties[q]], 
-                                   patch_artist=True)
+                    bp = ax.boxplot(box_data, labels=[q for q in unique_qualities if quality_uncertainties[q]], patch_artist=True, showfliers=True) # whis=[0,100] extends whiskers to min/max # Box: [Q1, Q3], with median (Q2) as a line inside # Whiskers: extend to data within [Q1 − 1.5×IQR, Q3 + 1.5×IQR] # Outliers: data outside whisker range (shown as circles if showfliers=True) # patch_artist=True fills the boxes with color 
                     
-                    # Color boxes by quality
-                    colors = ['green', 'blue', 'orange', 'red'][:len(bp['boxes'])]
+                    # Color boxes by quality using consistent scheme
+                    quality_color_map = {
+                        'High': '#2ca02c',          # Green
+                        'Medium': '#90EE90',        # Light green  
+                        'Low': '#ff7f0e',           # Orange
+                        'Very Low': '#FFC0CB',      # Pink
+                        'Unreliable': '#d62728',    # Red
+                        'Failed': '#000000'         # Black
+                    }
+                    colors = [quality_color_map.get(q, '#7f7f7f') for q in unique_qualities if quality_uncertainties[q]]
                     for patch, color in zip(bp['boxes'], colors):
                         patch.set_facecolor(color)
                         patch.set_alpha(0.7)
@@ -1328,30 +1404,28 @@ class SingleScenarioResultsVisualizer:
             quality_tiers = processing_stats.get('arps_dca', {}).get('quality_tier_distribution', {})
             
             if quality_tiers:
-                # Map quality tiers to uncertainty levels
-                uncertainty_mapping = {'high': 10, 'medium': 25, 'low': 50, 'very_low': 75, 'unreliable': 90, 'failed': 100}
+                # Use consistent quality tier order and colors from ArpsDCA system (FIXED)
+                tier_order = ['high', 'medium', 'low', 'very_low', 'unreliable', 'failed']
+                tier_colors = {
+                    'high': '#2ca02c',          # Green
+                    'medium': '#90EE90',        # Light green
+                    'low': '#ff7f0e',           # Orange
+                    'very_low': '#FFC0CB',      # Pink
+                    'unreliable': '#d62728',    # Red
+                    'failed': '#000000'         # Black
+                }
                 
                 tiers = []
                 counts = []
                 colors = []
                 
-                for tier, count in quality_tiers.items():
+                # Use consistent ordering from ArpsDCA system
+                for tier in tier_order:
+                    count = quality_tiers.get(tier, 0)
                     if count > 0:
-                        tiers.append(tier.title())
+                        tiers.append(tier.replace('_', ' ').title())
                         counts.append(count)
-                        
-                        # Color based on uncertainty level
-                        uncertainty = uncertainty_mapping.get(tier, 50)
-                        if uncertainty <= 20:
-                            colors.append('green')
-                        elif uncertainty <= 40:
-                            colors.append('lightgreen') 
-                        elif uncertainty <= 60:
-                            colors.append('orange')
-                        elif uncertainty <= 80:
-                            colors.append('pink')
-                        else:
-                            colors.append('red')
+                        colors.append(tier_colors[tier])
                 
                 if tiers and counts:
                     bars = ax1.bar(tiers, counts, color=colors, alpha=0.7)
@@ -1426,8 +1500,7 @@ class SingleScenarioResultsVisualizer:
             plt.savefig(self.analysis_dir / 'enhanced_uncertainty_analysis.png', dpi=300, bbox_inches='tight')
             plt.close()
     
-    def _plot_statistical_validation_analysis(self, well_data: pd.DataFrame, 
-                                 processing_stats: Dict[str, Any]) -> None:
+    def _plot_statistical_validation_analysis(self, well_data: pd.DataFrame, processing_stats: Dict[str, Any]) -> None:
         """Enhanced validation analysis with quality tier insights."""
         # Get enhanced processing results
         arps_stats = processing_stats.get('arps_dca', {})
@@ -1436,9 +1509,7 @@ class SingleScenarioResultsVisualizer:
         if not quality_tiers:
             # Create placeholder plot
             fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-            ax.text(0.5, 0.5, 'No validation data available', 
-                   ha='center', va='center', fontsize=16, 
-                   transform=ax.transAxes)
+            ax.text(0.5, 0.5, 'No validation data available', ha='center', va='center', fontsize=16, transform=ax.transAxes)
             ax.set_xlim(0, 1)
             ax.set_ylim(0, 1)
             ax.axis('off')
@@ -1469,18 +1540,42 @@ class SingleScenarioResultsVisualizer:
                     tier_data_stats[tier] = {'mean': np.mean(data_points), 'std': np.std(data_points), 'count': len(data_points)}
         
         if tier_data_stats:
-            tiers = list(tier_data_stats.keys())
-            means = [tier_data_stats[tier]['mean'] for tier in tiers]
-            stds = [tier_data_stats[tier]['std'] for tier in tiers]
+            # Use consistent quality tier order and colors including ALL possible tiers
+            tier_order = ['high', 'medium', 'low', 'very_low', 'unreliable', 'failed']
+            tier_colors = {
+                'high': '#2ca02c',          # Green
+                'medium': '#90EE90',        # Light green
+                'low': '#ff7f0e',           # Orange
+                'very_low': '#FFC0CB',      # Pink
+                'unreliable': '#d62728',    # Red
+                'failed': '#000000'         # Black
+            }
             
-            bars = ax1.bar(tiers, means, yerr=stds, capsize=5, 
-                          color=['#2E8B57', '#4169E1', '#FF8C00', '#DC143C', '#696969'][:len(tiers)],
-                          alpha=0.8, edgecolor='black')
+            # Filter and order tiers based on what's available in data
+            available_tiers = []
+            means = []
+            stds = []
+            colors = []
+            
+            for tier in tier_order:
+                if tier in tier_data_stats:
+                    available_tiers.append(tier.replace('_', ' ').title())
+                    means.append(tier_data_stats[tier]['mean'])
+                    stds.append(tier_data_stats[tier]['std'])
+                    colors.append(tier_colors[tier])
+            
+            # Use standard error of the mean instead of standard deviation for error bars
+            # Standard error represents uncertainty in the mean estimate, not spread of data
+            sample_sizes = [tier_data_stats[tier]['count'] for tier in tier_order if tier in tier_data_stats]
+            standard_errors = [std / np.sqrt(n) for std, n in zip(stds, sample_sizes)]
+            
+            bars = ax1.bar(available_tiers, means, capsize=5, color=colors, alpha=0.8, edgecolor='black') # yerr=stds,
             ax1.set_title('Data Availability by Quality Tier', fontsize=14, fontweight='bold')
             ax1.set_xlabel('Quality Tier', fontsize=12)
             ax1.set_ylabel('Average Data Points per Well', fontsize=12)
             ax1.grid(True, alpha=0.3)
             ax1.tick_params(axis='both', which='major', labelsize=12)
+            ax1.tick_params(axis='x', rotation=45)
         
         # Plot 2: Production distribution by quality tier
         ax2 = axes[1]
@@ -1493,27 +1588,44 @@ class SingleScenarioResultsVisualizer:
                 for well in wells:
                     well_data_subset = well_data[well_data['WellName'] == well]
                     if not well_data_subset.empty:
-                        production_values.extend(well_data_subset['OIL'].values)
+                        # Remove NaN values that cause box plots to appear empty
+                        oil_values = well_data_subset['OIL'].values
+                        # Filter out NaN and negative values
+                        valid_values = [val for val in oil_values if pd.notna(val) and val >= 0]
+                        production_values.extend(valid_values)
                 
                 if production_values:
                     tier_production_stats[tier] = production_values
         
         if tier_production_stats:
-            # Create box plot
+            # Create box plot using consistent quality tier order and colors
             data_for_boxplot = []
             labels_for_boxplot = []
             
-            for tier in ['high', 'medium', 'low', 'very_low', 'failed']:
+            # Use consistent quality tier order including all possible tiers
+            tier_order = ['high', 'medium', 'low', 'very_low', 'unreliable', 'failed']
+            tier_colors = {
+                'high': '#2ca02c',          # Green
+                'medium': '#90EE90',        # Light green
+                'low': '#ff7f0e',           # Orange
+                'very_low': '#FFC0CB',      # Pink
+                'unreliable': '#d62728',    # Red
+                'failed': '#000000'         # Black
+            }
+            
+            for tier in tier_order:
                 if tier in tier_production_stats:
                     data_for_boxplot.append(tier_production_stats[tier])
-                    labels_for_boxplot.append(tier.title())
+                    labels_for_boxplot.append(tier.replace('_', ' ').title())
             
             if data_for_boxplot:
-                bp = ax2.boxplot(data_for_boxplot, labels=labels_for_boxplot, patch_artist=True)
+                # Use showfliers=True to display all data points including outliers
+                bp = ax2.boxplot(data_for_boxplot, labels=labels_for_boxplot, patch_artist=True, showfliers=True) # whis=[0,100] extends whiskers to min/max # Box: [Q1, Q3], with median (Q2) as a line inside # Whiskers: extend to data within [Q1 − 1.5×IQR, Q3 + 1.5×IQR] # Outliers: data outside whisker range (shown as circles if showfliers=True) # patch_artist=True fills the boxes with color
                 
-                # Color the boxes
-                colors = ['#2E8B57', '#4169E1', '#FF8C00', '#DC143C', '#696969']
-                for patch, color in zip(bp['boxes'], colors[:len(bp['boxes'])]):
+                # Color the boxes using consistent scheme
+                for i, (patch, label) in enumerate(zip(bp['boxes'], labels_for_boxplot)):
+                    tier_key = label.lower().replace(' ', '_')
+                    color = tier_colors.get(tier_key, '#7f7f7f')
                     patch.set_facecolor(color)
                     patch.set_alpha(0.7)
                 
@@ -1522,23 +1634,26 @@ class SingleScenarioResultsVisualizer:
                 ax2.set_ylabel('Production (bbl/month)', fontsize=12)
                 ax2.grid(True, alpha=0.3)
                 ax2.tick_params(axis='both', which='major', labelsize=12)
+                ax2.tick_params(axis='x', rotation=45)
         
         # Plot 3: Quality tier transition analysis
         ax3 = axes[2]
         
-        # Show how data quality affects modeling success
+        # Show how data quality affects modeling success with all quality tiers
         quality_flow = {
             'Input Wells': arps_stats.get('total_wells', 0),
             'High Quality': len(quality_tiers.get('high', [])),
             'Medium Quality': len(quality_tiers.get('medium', [])),
-            'Low Quality': len(quality_tiers.get('low', [])) + len(quality_tiers.get('very_low', [])),
+            'Low Quality': len(quality_tiers.get('low', [])),
+            'Very Low Quality': len(quality_tiers.get('very_low', [])),
+            'Unreliable': len(quality_tiers.get('unreliable', [])),
             'Failed': len(quality_tiers.get('failed', []))
         }
         
-        # Create a flow diagram (simplified bar chart)
+        # Create a flow diagram (simplified bar chart) with consistent colors
         categories = list(quality_flow.keys())
         values = list(quality_flow.values())
-        colors = ['#808080', '#2E8B57', '#4169E1', '#FF8C00', '#DC143C']
+        colors = ['#808080', '#2ca02c', '#90EE90', '#ff7f0e', '#FFC0CB', '#d62728', '#000000']
         
         bars = ax3.bar(categories, values, color=colors, alpha=0.8, edgecolor='black')
         ax3.set_title('Quality Tier Flow Analysis', fontsize=14, fontweight='bold')
@@ -2146,8 +2261,7 @@ class AcquisitionAnalysisVisualizer:
                     box_data.append([revenues['P90'], revenues['P50'], revenues['P10']])
                     labels.append(scenario_name.title())
                 
-                bp = ax1.boxplot(box_data, labels=labels, patch_artist=True, 
-                               widths=0.6, showfliers=False)
+                bp = ax1.boxplot(box_data, labels=labels, patch_artist=True, widths=0.6, showfliers=True) # whis=[0,100] extends whiskers to min/max # Box: [Q1, Q3], with median (Q2) as a line inside # Whiskers: extend to data within [Q1 − 1.5×IQR, Q3 + 1.5×IQR] # Outliers: data outside whisker range (shown as circles if showfliers=True) # patch_artist=True fills the boxes with color
                 
                 # Enhanced box styling
                 for patch, color in zip(bp['boxes'], colors[:len(bp['boxes'])]):
@@ -2166,7 +2280,7 @@ class AcquisitionAnalysisVisualizer:
                 
                 ax1.set_title('Revenue Distribution by Scenario', fontsize=16, fontweight='bold')
                 ax1.set_xlabel('Uncertainty Scenario', fontsize=12, fontweight='bold')
-                ax1.set_ylabel('Total 30-Year Revenue ($Billion)', fontsize=12, fontweight='bold')
+                ax1.set_ylabel('Total 30-Year Revenue ($B)', fontsize=12, fontweight='bold')
                 ax1.grid(True, alpha=0.4, axis='y')
                 ax1.tick_params(axis='both', which='major', labelsize=12)
             
@@ -2279,8 +2393,7 @@ class AcquisitionAnalysisVisualizer:
                 
                 ax3.text(0.1, 0.35, insights_text, transform=ax3.transAxes, fontsize=12, verticalalignment='top', fontfamily='monospace', bbox=dict(boxstyle="round,pad=0.5", facecolor='lightgreen', alpha=0.8))
             
-            plt.suptitle('Asset Revenue Distribution Analysis', 
-                        fontsize=20, fontweight='bold', y=0.95)
+            plt.suptitle('Asset Revenue Distribution Analysis', fontsize=20, fontweight='bold', y=0.95)
             
             if save_path:
                 plt.savefig(save_path, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
