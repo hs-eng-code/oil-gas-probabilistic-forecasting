@@ -247,7 +247,12 @@ class ModernizedBayesianForecaster:
             # Step 6: Bayesian diagnostics
             diagnostics = self._compute_enhanced_bayesian_diagnostics(well_name, fit_result, posterior_params, parameter_samples, quality_assessment)
             
-            # Store results
+            # Step 7: Generate Bayesian forecasts directly during fitting (avoiding duplicate Monte Carlo)
+            bayesian_forecasts = self._generate_bayesian_forecasts_during_fit(
+                parameter_samples, quality_assessment, well_name, forecast_months=360
+            )
+            
+            # Store results with integrated forecasts
             bayesian_result = {
                 'success': True,
                 'well_name': well_name,
@@ -256,6 +261,7 @@ class ModernizedBayesianForecaster:
                 'likelihood_params': likelihood_params,
                 'posterior_params': posterior_params,
                 'parameter_samples': parameter_samples,
+                'bayesian_forecasts': bayesian_forecasts,  # Pre-computed Bayesian forecasts
                 'diagnostics': diagnostics,
                 'processing_time': time.time() - start_time,
                 'method': f"Bayesian with {fit_result.method} deterministic base"
@@ -273,6 +279,89 @@ class ModernizedBayesianForecaster:
                 'error': str(e),
                 'processing_time': time.time() - start_time
             }
+    
+    def _generate_bayesian_forecasts_during_fit(self, parameter_samples: Dict[str, np.ndarray], 
+                                               quality_assessment: Dict[str, Any], 
+                                               well_name: str, 
+                                               forecast_months: int = 360) -> Dict[str, Any]:
+        """
+        Generate complete Bayesian forecasts during the fitting process.
+        This avoids the need for subsequent Monte Carlo calls.
+        
+        Args:
+            parameter_samples: Bayesian parameter samples from posterior
+            quality_assessment: Quality assessment results
+            well_name: Well identifier
+            forecast_months: Number of months to forecast
+            
+        Returns:
+            Complete Bayesian forecast results with percentiles and cumulatives
+        """
+        try:
+            # Generate forecast samples using Bayesian parameter samples
+            forecast_samples = self._generate_enhanced_forecast_samples(
+                parameter_samples, forecast_months, quality_assessment, well_name
+            )
+            
+            # Calculate industry-standard percentiles from Bayesian samples
+            percentiles = [0.9, 0.5, 0.1]  # P10, P50, P90
+            forecast_percentiles = self._calculate_enhanced_forecast_percentiles(
+                forecast_samples, percentiles, quality_assessment
+            )
+            
+            # Calculate cumulative percentiles
+            cumulative_percentiles = self._calculate_enhanced_cumulative_percentiles(
+                forecast_percentiles, quality_assessment
+            )
+            
+            return {
+                'success': True,
+                'forecast_percentiles': forecast_percentiles,
+                'cumulative_percentiles': cumulative_percentiles,
+                'uncertainty_bounds': self._calculate_uncertainty_bounds(
+                    forecast_percentiles, quality_assessment
+                ),
+                'forecast_months': forecast_months,
+                'quality_metadata': {
+                    'confidence_level': quality_assessment['confidence_level'],
+                    'composite_score': quality_assessment['composite_score'],
+                    'method': quality_assessment['method']
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Bayesian forecast generation failed for well {well_name}: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def get_bayesian_forecasts(self, well_name: str) -> Dict[str, Any]:
+        """
+        Get pre-computed Bayesian forecasts for a well.
+        
+        Args:
+            well_name: Well identifier
+            
+        Returns:
+            Bayesian forecast results or error dict
+        """
+        if well_name not in self.fit_results:
+            return {
+                'success': False,
+                'error': f"Well {well_name} not fitted with Bayesian method"
+            }
+        
+        fit_result = self.fit_results[well_name]
+        bayesian_forecasts = fit_result.get('bayesian_forecasts')
+        
+        if not bayesian_forecasts:
+            return {
+                'success': False,
+                'error': f"No Bayesian forecasts available for well {well_name}"
+            }
+        
+        return bayesian_forecasts
     
     def _assess_fit_quality(self, fit_result: FitResult, validation: Optional[ValidationResult], well_name: str) -> Dict[str, Any]:
         """
@@ -921,12 +1010,14 @@ class ModernizedBayesianForecaster:
             'sample_quality': np.mean(parameter_samples['quality_score'])
         }
     
-    def forecast_probabilistic(self,
-                             well_name: str,
-                             forecast_months: int = 360,
-                             percentiles: List[float] = None) -> Dict[str, Any]:
+    def forecast_probabilistic(self, well_name: str, forecast_months: int = 360, percentiles: List[float] = None) -> Dict[str, Any]:
         """
         Generate probabilistic forecasts using enhanced parameter samples.
+        
+        DEPRECATION WARNING: If you have used fit_bayesian_decline(), the forecasts are already
+        pre-computed. Use get_bayesian_forecasts() instead to avoid duplicate Monte Carlo computation.
+        
+        This method is primarily for standalone Monte Carlo simulation scenarios.
         
         Args:
             well_name: Well identifier
@@ -942,6 +1033,14 @@ class ModernizedBayesianForecaster:
         
         if well_name not in self.fit_results:
             raise BayesianForecastError(f"Well {well_name} not fitted")
+        
+        # Check if Bayesian forecasts already exist
+        fit_result = self.fit_results[well_name]
+        if 'bayesian_forecasts' in fit_result and fit_result['bayesian_forecasts']['success']:
+            logger.warning(f"Well {well_name}: Bayesian forecasts already computed during fit_bayesian_decline(). "
+                          f"Consider using get_bayesian_forecasts() to avoid duplicate computation.")
+            # Return existing forecasts to avoid recomputation
+            return fit_result['bayesian_forecasts']
         
         try:
             # Get fit results and quality assessment

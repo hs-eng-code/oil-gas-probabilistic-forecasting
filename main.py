@@ -382,10 +382,7 @@ class ProbablisticProductionForecastingPipeline:
                     self._log_well_processing_details(well_name, fit_result)
 
                     # Generate forecast - Include ALL successful wells
-                    forecast_result = self.arps_dca.forecast_production(
-                        well_name,
-                        forecast_months=self.forecast_months
-                    )
+                    forecast_result = self.arps_dca.forecast_production(well_name, forecast_months=self.forecast_months)
 
                     # BUSINESS ENHANCEMENT: Apply uncertainty multiplier to forecasts
                     # This ensures negative R² wells contribute to portfolio with appropriate uncertainty
@@ -758,6 +755,7 @@ class ProbablisticProductionForecastingPipeline:
         negative_r2_wells_processed = 0
 
         logger.info("Processing wells with comprehensive Bayesian analysis...")
+        logger.info("CORRECTED WORKFLOW: Using integrated Bayesian fitting + forecasting (no duplicate Monte Carlo)")
 
         for well_name in tqdm(successful_wells, desc="Comprehensive Bayesian analysis"):
             try:
@@ -780,23 +778,16 @@ class ProbablisticProductionForecastingPipeline:
                     validation_result
                 )
 
-                # Fit comprehensive Bayesian decline model
+                # Fit comprehensive Bayesian decline model with integrated forecasting
                 well_data = self.well_data[self.well_data['WellName'] == well_name]
-                model_result = self.bayesian_forecaster.fit_bayesian_decline(
-                    production_data=well_data,
-                    well_name=well_name
-                )
+                model_result = self.bayesian_forecaster.fit_bayesian_decline(production_data=well_data, well_name=well_name)
 
                 if model_result['success']:
-                    # Generate probabilistic forecast with comprehensive uncertainty
-                    # Note: uncertainty_multiplier is already incorporated through quality_assessment in Bayesian forecaster
-                    forecast_result = self.bayesian_forecaster.forecast_probabilistic(
-                        well_name=well_name,
-                        forecast_months=self.forecast_months,
-                        percentiles=[0.9, 0.5, 0.1]  # Industry standard P10/P50/P90
-                    )
-
-                    if forecast_result['success']:
+                    # CORRECTED: Use pre-computed Bayesian forecasts instead of Monte Carlo
+                    # The forecasts are already generated during Bayesian fitting process
+                    bayesian_forecasts = model_result.get('bayesian_forecasts')
+                    
+                    if bayesian_forecasts and bayesian_forecasts['success']:
                         successful_forecasts.append(well_name)
 
                         # Enhanced logging for negative R² wells
@@ -804,11 +795,11 @@ class ProbablisticProductionForecastingPipeline:
                             logger.info(f"Negative R² well successfully processed: {well_name}")
                             logger.info(f"   R²={r_squared:.3f}, uncertainty_multiplier={uncertainty_multiplier:.1f}x")
 
-                        logger.debug(f"Well {well_name}: Comprehensive forecast successful, "
-                                   f"EUR P50={forecast_result['cumulative_percentiles']['P50'][-1]:.0f}")
+                        logger.debug(f"Well {well_name}: Comprehensive Bayesian forecast successful, "
+                                   f"EUR P50={bayesian_forecasts['cumulative_percentiles']['P50'][-1]:.0f}")
                     else:
                         failed_forecasts.append(well_name)
-                        logger.warning(f"Well {well_name}: Forecast generation failed")
+                        logger.warning(f"Well {well_name}: Bayesian forecast generation failed")
                 else:
                     failed_forecasts.append(well_name)
                     logger.warning(f"Well {well_name}: Bayesian model fitting failed: {model_result.get('error', 'Unknown error')}")
@@ -942,16 +933,12 @@ class ProbablisticProductionForecastingPipeline:
 
         for well_name in successful_forecasts:
             try:
-                # Generate forecast using enhanced Bayesian results
-                forecast_result = self.bayesian_forecaster.forecast_probabilistic(
-                    well_name=well_name,
-                    forecast_months=self.forecast_months,
-                    percentiles=[0.9, 0.5, 0.1]  # P10, P50, P90
-                )
-
-                if forecast_result['success']:
-                    # CRITICAL Use correct key 'forecast_percentiles' instead of 'production_scenarios'
-                    forecast_percentiles = forecast_result['forecast_percentiles']
+                # CORRECTED: Use pre-computed Bayesian forecasts instead of Monte Carlo
+                bayesian_forecasts = self.bayesian_forecaster.get_bayesian_forecasts(well_name)
+                
+                if bayesian_forecasts['success']:
+                    # Use pre-computed Bayesian forecast percentiles
+                    forecast_percentiles = bayesian_forecasts['forecast_percentiles']
 
                     forecast_df = pd.DataFrame({
                         'Date': pd.date_range(start='2025-01-01', periods=self.forecast_months, freq='M'),
@@ -1003,7 +990,7 @@ class ProbablisticProductionForecastingPipeline:
                     well_forecasts[well_name] = forecast_df
 
                 else:
-                    logger.warning(f"Forecast failed for well {well_name}: {forecast_result.get('error', 'Unknown error')}")
+                    logger.warning(f"Bayesian forecast failed for well {well_name}: {bayesian_forecasts.get('error', 'Unknown error')}")
 
             except Exception as e:
                 logger.error(f"Error processing well {well_name} for aggregation: {str(e)}")
@@ -1014,6 +1001,7 @@ class ProbablisticProductionForecastingPipeline:
             raise Exception("No valid well forecasts available for aggregation")
 
         logger.info(f"Aggregating {len(well_forecasts)} well forecasts using AssetAggregator")
+        logger.info(f"CORRECTED: Using pre-computed Bayesian forecasts (not Monte Carlo recomputation)")
         logger.info(f"Enhanced uncertainty applied to {negative_r2_wells_processed} negative R² wells")
 
         # Use AssetAggregator for proper aggregation
@@ -1249,7 +1237,7 @@ class ProbablisticProductionForecastingPipeline:
             # Generate comprehensive analysis
             pipeline_results = self._get_pipeline_results()
 
-            visualizer.generate_comprehensive_analysis(pipeline_results=pipeline_results, well_data=self.well_data, processing_stats=self.processing_stats)
+            visualizer.generate_single_scenario_visualizations(pipeline_results=pipeline_results, well_data=self.well_data, processing_stats=self.processing_stats)
 
             logger.info("Advanced analytics and visualizations completed successfully")
 
@@ -1536,7 +1524,7 @@ def load_all_results(pickle_file: str = "output/all_results.pkl") -> Dict:
 
 # ========== CONFIGURATION ==========
 main_configs = {
-    'load_existing_results': True,  # False to run the full pipeline
+    'load_existing_results': False,  # False to run the full pipeline
     'name': 'Individual Well-Level Bayesian',
     'use_asset_scale_bayesian_processing': False,
     'uncertainty_levels': ['conservative', 'standard', 'aggressive'],
@@ -1602,7 +1590,7 @@ if __name__ == "__main__":
             visualizer = SingleScenarioResultsVisualizer(output_dir=str(all_results[uncertainty_level]["output_dir"]), analysis_dir=str(all_results[uncertainty_level]["output_dir"] / "visualizations"))
 
             # Generate comprehensive analysis
-            visualizer.generate_comprehensive_analysis(pipeline_results=pipeline_results, well_data=well_dat, processing_stats=processing_stats)
+            visualizer.generate_single_scenario_visualizations(pipeline_results=pipeline_results, well_data=well_dat, processing_stats=processing_stats)
 
             # Print success message
             print(f"Single scenario visualizations for {uncertainty_level} uncertainty level completed successfully!")
@@ -1612,7 +1600,7 @@ if __name__ == "__main__":
         print(f"Warning: Individual Scenario Visualizations generation failed: {str(e)}")
         import traceback
         traceback.print_exc()
-                
+    
     #------------ Acquisition Analysis Visualizations ------------
     print(f"\n{'='*60}")
     print("GENERATING ACQUISITION ANALYSIS VISUALIZATIONS")

@@ -442,6 +442,10 @@ def _sample_from_enhanced_posteriors(self, posterior_params: Dict[str, Any], qua
 
 ### 5.2 Forecasting
 
+**CORRECTED APPROACH**: Forecasting is now integrated within `fit_bayesian_decline()` via the `_generate_bayesian_forecasts_during_fit()` method, eliminating the need for separate `forecast_probabilistic()` calls.
+
+**Accessing Forecasts**: Use `get_bayesian_forecasts(well_name)` to retrieve pre-computed Bayesian forecasts, or access them directly from the `fit_bayesian_decline()` result via `result['bayesian_forecasts']`.
+
 **Forecast Sample Generation:**
 Takes the posterior distribution parameter samples, applies noise based on non-high quality ('confidence_level') production data identified in ArpsDCA, and generates forecast samples using ArpsDCA integration:
 
@@ -680,9 +684,20 @@ def _deterministic_hash(self, well_name):
 - **Quality metadata**: Confidence levels and composite scores
 - **Parameter samples**: For correlation analysis
 
-### 9.2 Data Flow
+### 9.2 Corrected Bayesian Workflow Architecture
 
-**Comprehensive Individual Processing:**
+**CRITICAL CORRECTION**: The original implementation incorrectly called `forecast_probabilistic()` separately after `fit_bayesian_decline()`, causing duplicate Monte Carlo computation on Bayesian results. The corrected architecture integrates forecast generation within the Bayesian fitting process.
+
+**Key Architectural Changes:**
+1. **Integrated Forecasting**: `fit_bayesian_decline()` now includes Step 7 that generates complete forecasts during Bayesian fitting (using `_generate_bayesian_forecasts_during_fit`)
+2. **Pre-computed Results**: Forecasts are stored as `'bayesian_forecasts'` in the fit result
+3. **Utility Access**: New `get_bayesian_forecasts()` method retrieves pre-computed forecasts
+4. **Corrected Aggregation**: Asset aggregation now uses `get_bayesian_forecasts()` instead of calling `forecast_probabilistic()`
+5. **Deprecation Warning**: `forecast_probabilistic()` now warns against duplicate computation
+
+### 9.3 Data Flow
+
+**Comprehensive Individual Processing (Corrected Workflow):**
 ```python
 def _generate_comprehensive_individual_bayesian_forecasts(self, successful_wells, start_time):
     # Initialize comprehensive Bayesian forecaster
@@ -701,18 +716,17 @@ def _generate_comprehensive_individual_bayesian_forecasts(self, successful_wells
         fit_result_obj = self.arps_dca.fit_results[well_name]
         quality_tier = self.arps_dca._determine_quality_tier(fit_result_obj, validation_result)
         
-        # Fit comprehensive Bayesian model
+        # CORRECTED: fit_bayesian_decline now generates integrated forecasts
         model_result = self.bayesian_forecaster.fit_bayesian_decline(
             production_data=well_data,
             well_name=well_name
         )
         
-        # Generate probabilistic forecast
-        forecast_result = self.bayesian_forecaster.forecast_probabilistic(
-            well_name=well_name,
-            forecast_months=self.forecast_months,
-            percentiles=[0.9, 0.5, 0.1]
-        )
+        # CORRECTED: Access pre-computed Bayesian forecasts (no duplicate Monte Carlo)
+        if model_result['success']:
+            bayesian_forecasts = model_result.get('bayesian_forecasts')
+            # OR use utility method: 
+            # bayesian_forecasts = self.bayesian_forecaster.get_bayesian_forecasts(well_name)
 ```
 
 **Asset-Scale Processing:**

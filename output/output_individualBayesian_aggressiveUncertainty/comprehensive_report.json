@@ -1,6 +1,6 @@
 {
   "report_metadata": {
-    "generated_at": "2025-07-15T20:39:05.644956",
+    "generated_at": "2025-07-18T19:49:10.758183",
     "pipeline_version": "Modernized Forecasting Pipeline v2.0",
     "report_type": "Comprehensive Asset Analysis"
   },
@@ -69,26 +69,26 @@
   },
   "pipeline_performance": {
     "processing_times": {
-      "data_validation": 0.5695586204528809,
-      "arps_dca": 197.31839895248413,
-      "probabilistic_forecasting": 17.256890773773193,
-      "asset_aggregation": 17.156189680099487,
-      "revenue_calculation": 0.3933074474334717,
-      "comprehensive_validation": 0.015125274658203125,
-      "advanced_analytics": 6.262938499450684
+      "data_validation": 0.7825872898101807,
+      "arps_dca": 315.6256067752838,
+      "probabilistic_forecasting": 24.490755558013916,
+      "asset_aggregation": 2.747040033340454,
+      "revenue_calculation": 0.8627874851226807,
+      "comprehensive_validation": 0.002831697463989258,
+      "advanced_analytics": 17.660107374191284
     },
     "memory_usage": {
-      "data_loading": 313.4765625,
-      "arps_dca": 309.40234375,
-      "probabilistic_forecasting": 309.09375,
-      "asset_aggregation": 316.1484375,
-      "revenue_calculation": 316.5625
+      "data_loading": 376.125,
+      "arps_dca": 51.95703125,
+      "probabilistic_forecasting": 80.38671875,
+      "asset_aggregation": 201.01953125,
+      "revenue_calculation": 201.12109375
     },
     "system_performance": {
       "total_processing_time": 0,
-      "arps_dca_time": 197.31839895248413,
+      "arps_dca_time": 315.6256067752838,
       "bayesian_forecasting_time": 0,
-      "revenue_calculation_time": 0.3933074474334717,
+      "revenue_calculation_time": 0.8627874851226807,
       "peak_memory_usage": 0
     }
   },

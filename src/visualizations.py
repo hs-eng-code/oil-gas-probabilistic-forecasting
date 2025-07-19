@@ -99,10 +99,7 @@ class SingleScenarioResultsVisualizer:
         
         logger.info(f"SingleScenarioResultsVisualizer initialized: {self.output_dir}")
         
-    def generate_comprehensive_analysis(self, 
-                                      pipeline_results: Dict[str, Any],
-                                      well_data: pd.DataFrame,
-                                      processing_stats: Dict[str, Any]) -> None:
+    def generate_single_scenario_visualizations(self, pipeline_results: Dict[str, Any], well_data: pd.DataFrame, processing_stats: Dict[str, Any]) -> None:
         """
         Generate comprehensive analysis with all visualizations.
         
@@ -131,6 +128,7 @@ class SingleScenarioResultsVisualizer:
                 self._analyze_enhanced_parameter_distributions(arps_dca)
                 self._analyze_fitting_method_performance(arps_dca)
                 self._plot_statistical_validation_analysis(well_data, safe_processing_stats)
+                self.create_production_history_quality_analysis(well_data, arps_dca)
             
             # Bayesian forecasting analysis
             bayesian_forecaster = pipeline_results.get('bayesian_forecaster')
@@ -372,8 +370,7 @@ class SingleScenarioResultsVisualizer:
         ax6.set_title('Fit Quality Distribution', fontsize=14, fontweight='bold')
         
         plt.tight_layout()
-        plt.savefig(self.analysis_dir / 'enhanced_parameter_distributions.png', 
-                   dpi=300, bbox_inches='tight')
+        plt.savefig(self.analysis_dir / 'enhanced_parameter_distributions.png', dpi=300, bbox_inches='tight')
         plt.close()
     
     def _analyze_fitting_method_performance(self, arps_dca) -> None:
@@ -1704,6 +1701,140 @@ class SingleScenarioResultsVisualizer:
                    dpi=300, bbox_inches='tight')
         plt.close()
 
+    def create_production_history_quality_analysis(self, well_data: pd.DataFrame, arps_dca) -> None:
+        """
+        Create production history curves for all wells with quality tier coloring.
+        
+        Generates two visualizations:
+        1. All wells colored by quality tier
+        2. Same as #1 but with non-target quality tiers (high, medium) greyed out
+        
+        Args:
+            well_data: DataFrame with columns ['WellName', 'DATE', 'OIL']
+            arps_dca: ArpsDCA object with fit_results and validation_results
+            output_dir: Output directory for saving images (defaults to self.analysis_dir)
+        """
+        # Extended quality colors to include 'unreliable'
+        quality_colors = {
+            'high': '#006400',        # Dark green
+            'medium': '#90EE90',      # Light green  
+            'low': '#D65F00',         # Dark orange
+            'very_low': '#FF69B4',    # Hot pink
+            'unreliable': '#8B0000',  # Dark Red
+            'failed': '#000000'       # Black
+        }
+        # Target quality tiers for highlighting in second image
+        target_tiers = {'low', 'very_low', 'unreliable'}
+        
+        # Prepare data for plotting
+        wells_by_quality = {}
+        for well_name, fit_result in arps_dca.fit_results.items():
+            if fit_result.success:
+                validation_result = arps_dca.validation_results.get(well_name)
+                quality_tier = arps_dca._determine_quality_tier(fit_result, validation_result)
+                
+                if quality_tier not in wells_by_quality:
+                    wells_by_quality[quality_tier] = []
+                wells_by_quality[quality_tier].append(well_name)
+        
+        # Convert DATE column to datetime if it's not already
+        well_data['DATE'] = pd.to_datetime(well_data['DATE'])
+        
+        # Create two identical plots with different highlighting
+        for plot_type in ['all_wells', 'target_wells_highlighted']:
+            fig, ax = plt.subplots(figsize=(8, 6))
+            
+            legend_elements = []
+            well_count_by_tier = {}
+            
+            # Plot each quality tier
+            for quality_tier in ['high', 'medium', 'low', 'very_low', 'unreliable', 'failed']:
+                if quality_tier not in wells_by_quality:
+                    continue
+                
+                wells_in_tier = wells_by_quality[quality_tier]
+                well_count_by_tier[quality_tier] = len(wells_in_tier)
+                
+                # Determine color and alpha for this plot type
+                if plot_type == 'all_wells':
+                    color = quality_colors[quality_tier]
+                    alpha = 1.0
+                    linewidth = 1.0
+                elif plot_type == 'target_wells_highlighted':
+                    if quality_tier in target_tiers:
+                        color = quality_colors[quality_tier]
+                        alpha = 0.8
+                        linewidth = 1.0
+                    else:
+                        color = '#e0e0e0'  # '#cccccc' is grey, #e0e0e0 is lighter grey
+                        alpha = 0.4
+                        linewidth = 0.8
+                
+                # Plot wells in this quality tier
+                for well_name in wells_in_tier:
+                    well_subset = well_data[well_data['WellName'] == well_name].copy()
+                    well_subset = well_subset.sort_values('DATE')
+                    
+                    if len(well_subset) > 1:  # Only plot wells with multiple data points
+                        ax.plot(well_subset['DATE'], well_subset['OIL'], 
+                               color=color, alpha=alpha, linewidth=linewidth)
+                
+                # Add legend entry (only for first well to avoid duplicates)
+                # Add legend entry (only for first well to avoid duplicates)
+                if wells_in_tier:
+                    # HIGHLIGHTED: Only add legend entry for 'all_wells' or target tiers in 'target_wells_highlighted'
+                    if plot_type == 'all_wells' or quality_tier in target_tiers:
+                        legend_elements.append(plt.Line2D([0], [0], color=color, linewidth=2, label=f'{quality_tier.title()} ({len(wells_in_tier)} wells)'))
+
+            # Formatting
+            ax.set_xlabel('Date', fontsize=14, fontweight='bold')
+            ax.set_ylabel('Oil Production History (bbl/month)', fontsize=14, fontweight='bold')
+            
+            if plot_type == 'all_wells':
+                title = 'Production History Curves by Quality Tier\n(All 374 Wells)'
+                filename = 'production_history_all_wells_by_quality.png'
+            else:
+                title = 'Production History Curves: Challenging Wells Highlighted\n(Low, Very Low, Unreliable Quality Tiers)'
+                filename = 'production_history_challenging_wells_highlighted.png'
+            
+            # ax.set_title(title, fontsize=16, fontweight='bold', pad=20)
+            
+            # Set y-axis to log scale for better visibility of decline curves
+            ax.set_yscale('log')
+            ax.set_ylim(bottom=10)  # Minimum visible production
+            
+            # Format x-axis dates
+            ax.tick_params(axis='both', which='major', labelsize=12)
+            years = mdates.YearLocator()
+            years_fmt = mdates.DateFormatter('%Y')
+            ax.xaxis.set_major_locator(years)
+            ax.xaxis.set_major_formatter(years_fmt)
+            plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
+            
+            # Add grid
+            ax.grid(True, alpha=0.3, linestyle='-', linewidth=0.5)
+            
+            # Add legend
+            lgd = ax.legend(handles=legend_elements, loc='lower left', fontsize=12, framealpha=0.5, fancybox=True, title="Quality Tiers", title_fontsize=12)
+            
+            # Align title to the left manually
+            lgd.get_title().set_horizontalalignment('left')
+            lgd.get_title().set_position((-0.05, 1))  # Tweak the position to prevent padding issues
+            # Add summary text box
+            total_wells = sum(well_count_by_tier.values())
+            summary_text = f'Total Wells: {total_wells}\n'
+            summary_text += f'Date Range: {well_data["DATE"].min().strftime("%Y-%m")} to {well_data["DATE"].max().strftime("%Y-%m")}'
+            
+            if plot_type == 'target_wells_highlighted':
+                target_count = sum(well_count_by_tier.get(tier, 0) for tier in target_tiers)
+                summary_text += f'\nHighlighted Wells: {target_count}'
+            
+            ax.text(0.02, 0.98, summary_text, transform=ax.transAxes, fontsize=10,verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+            
+            plt.tight_layout()
+            plt.savefig(self.analysis_dir / filename, dpi=300, bbox_inches='tight', facecolor='white')
+            plt.close()
+        
 
 # =======================================
 # ASSET ACQUISITION ANALYSIS VISUALIZER
@@ -2038,14 +2169,14 @@ class AcquisitionAnalysisVisualizer:
             ax1.set_ylabel('Monthly Production (MMbbl/month)', fontsize=14, fontweight='bold')
             
             # Legend for decline curves
-            legend1 = ax1.legend(loc='best', fontsize=10, framealpha=0.5, fancybox=True)
+            legend1 = ax1.legend(loc='best', fontsize=12, framealpha=0.5, fancybox=True)
             
             # Grid and formatting for decline curves
             ax1.minorticks_on() # Enable minor ticks
             ax1.grid(True, alpha=0.4, linestyle='-', linewidth=0.5)
             # Show minor horizontal grid
             ax1.grid(True, which='minor', axis='y', alpha=0.2, linestyle='--', linewidth=0.4)
-            ax1.tick_params(axis='both', which='major', labelsize=10)
+            ax1.tick_params(axis='both', which='major', labelsize=12)
             
             # Format x-axis with better spacing
             ax1.xaxis.set_major_locator(mdates.YearLocator(5))
@@ -2069,15 +2200,15 @@ class AcquisitionAnalysisVisualizer:
             
             # Styling for cumulative production (right subplot)
             ax2.set_title('Cumulative Forecast', fontsize=16, fontweight='bold', pad=20)
-            ax2.set_xlabel('Forecast Year', fontsize=14, fontweight='bold')
+            ax2.set_xlabel('Date', fontsize=14, fontweight='bold')
             ax2.set_ylabel('Cumulative Production (MMbbl)', fontsize=14, fontweight='bold')
             
             # Legend for cumulative production
-            legend2 = ax2.legend(loc='best', fontsize=10, framealpha=0.5, fancybox=True)
+            legend2 = ax2.legend(loc='best', fontsize=12, framealpha=0.5, fancybox=True)
             
             # Grid and formatting for cumulative production
             ax2.grid(True, alpha=0.4, linestyle='-', linewidth=0.5)
-            ax2.tick_params(axis='both', which='major', labelsize=10)
+            ax2.tick_params(axis='both', which='major', labelsize=12)
             
             # Format x-axis
             ax2.xaxis.set_major_locator(mdates.YearLocator(5))
@@ -2150,8 +2281,8 @@ class AcquisitionAnalysisVisualizer:
                 
                 scenario_idx += 1
             
-            # Styling for monthly production revenue curves (left subplot)
-            ax1.set_title('Monthly Decline Foreast', fontsize=16, fontweight='bold', pad=20)
+            # Styling for monthly revenue revenue curves (left subplot)
+            ax1.set_title('Monthly Decline Forecast', fontsize=16, fontweight='bold', pad=20)
             ax1.set_xlabel('Date', fontsize=14, fontweight='bold')
             ax1.set_ylabel('Monthly Revenue ($B/month)', fontsize=14, fontweight='bold')
             
@@ -2189,15 +2320,15 @@ class AcquisitionAnalysisVisualizer:
             
             # Styling for cumulative revenue (right subplot)
             ax2.set_title('Cumulative Forecast', fontsize=16, fontweight='bold', pad=20)
-            ax2.set_xlabel('Forecast Year', fontsize=14, fontweight='bold')
+            ax2.set_xlabel('Date', fontsize=14, fontweight='bold')
             ax2.set_ylabel('Cumulative Revenue ($B)', fontsize=14, fontweight='bold')
             
             # Legend for cumulative revenue
-            legend2 = ax2.legend(loc='best', fontsize=10, framealpha=0.5, fancybox=True)
+            legend2 = ax2.legend(loc='best', fontsize=12, framealpha=0.5, fancybox=True)
             
             # Grid and formatting for cumulative production
             ax2.grid(True, alpha=0.4, linestyle='-', linewidth=0.5)
-            ax2.tick_params(axis='both', which='major', labelsize=10)
+            ax2.tick_params(axis='both', which='major', labelsize=12)
             
             # Format x-axis
             ax2.xaxis.set_major_locator(mdates.YearLocator(5))
