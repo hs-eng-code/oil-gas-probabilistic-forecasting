@@ -1088,15 +1088,24 @@ class AdvancedArpsDCA:
                 qi, Di, b = popt
                 
                 # Check if EUR would be unrealistic
-                if b > 1.0:
+                if b >= 1.0:
+                    # For b >= 1.0 (harmonic and super-harmonic), EUR is infinite
+                    # This is physically unrealistic for finite reservoirs
+                    return {'needs_switch': True, 'reason': 'infinite_eur_b_geq_1'}
+                elif b < 1.0:
+                    # For b < 1.0, EUR is finite: qi / (Di * (1 - b))
                     try:
-                        projected_eur = qi / (Di * (1 - b))  # Infinite for b >= 1
-                        if projected_eur > 50 * qi:  # More than 50x initial rate
-                            return {'needs_switch': True, 'reason': 'unrealistic_eur'}
-                    except:
-                        pass
+                        projected_eur = qi / (Di * (1 - b))
+                        # Check if EUR is unreasonably large (more than 50x initial rate)
+                        if projected_eur > 50 * qi:
+                            return {'needs_switch': True, 'reason': 'unrealistic_eur_too_large'}
+                    except (ZeroDivisionError, OverflowError):
+                        # Handle edge cases where Di is very small or calculation overflows
+                        return {'needs_switch': True, 'reason': 'eur_calculation_error'}
                         
-            except:
+            except Exception as e:
+                # If hyperbolic fit fails entirely, log the reason but don't force switch
+                logger.debug(f"Hyperbolic fit failed in physical constraints assessment: {str(e)}")
                 pass
         
         return {'needs_switch': False}

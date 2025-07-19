@@ -8,33 +8,33 @@ SCENARIO OVERVIEW:
 
 CONSERVATIVE SCENARIO RESULTS:
   Revenue (30-year):
-    P10 (Optimistic): $4.9B
-    P50 (Expected):   $3.2B
+    P10 (Optimistic): $5.1B
+    P50 (Expected):   $3.3B
     P90 (Conservative): $2.1B
-    Range: $2.8B
-    P10/P90 Ratio: 2.36x
+    Range: $3.0B
+    P10/P90 Ratio: 2.41x
   Production (30-year):
-    P50 EUR: 46.7 MMbbl
+    P50 EUR: 48.5 MMbbl
 
 STANDARD SCENARIO RESULTS:
   Revenue (30-year):
-    P10 (Optimistic): $4.0B
-    P50 (Expected):   $3.0B
-    P90 (Conservative): $2.3B
-    Range: $1.7B
-    P10/P90 Ratio: 1.73x
+    P10 (Optimistic): $4.1B
+    P50 (Expected):   $3.1B
+    P90 (Conservative): $2.4B
+    Range: $1.8B
+    P10/P90 Ratio: 1.74x
   Production (30-year):
-    P50 EUR: 44.0 MMbbl
+    P50 EUR: 45.8 MMbbl
 
 AGGRESSIVE SCENARIO RESULTS:
   Revenue (30-year):
-    P10 (Optimistic): $3.8B
-    P50 (Expected):   $2.9B
-    P90 (Conservative): $2.2B
-    Range: $1.5B
-    P10/P90 Ratio: 1.69x
+    P10 (Optimistic): $3.9B
+    P50 (Expected):   $3.0B
+    P90 (Conservative): $2.3B
+    Range: $1.6B
+    P10/P90 Ratio: 1.68x
   Production (30-year):
-    P50 EUR: 42.1 MMbbl
+    P50 EUR: 43.8 MMbbl
 
 INVESTMENT RECOMMENDATIONS:
 • Conservative scenario provides downside protection
